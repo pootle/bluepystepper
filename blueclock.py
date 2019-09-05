@@ -45,6 +45,7 @@ class bluemotor():
             self.motor.setspeed(speed=self.speed)
         elif pos.middle:
             print("stopped")
+            self.speed = 0
             self.motor.setspeed(speed=0)
         
     def stop(self):
