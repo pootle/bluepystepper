@@ -42,13 +42,14 @@ motor28BYJ_48=(
 
 mregs=(
     {'_cclass': appregs.appval, 'name': 'uStepPos',         'value': 0},        # records current position in microsteps (integer)
-    {'_cclass': appregs.appval, 'name': 'reverse',          'value': True},    # set True to invert motor direction if +ve speed is wrong direction
+    {'_cclass': appregs.appval, 'name': 'reverse',          'value': True},     # set True to invert motor direction if +ve speed is wrong direction
     {'_cclass': appregs.appval, 'name': 'PWM frequency',    'value': 10000},    # frequency to request for pwm (but see pigpio docs for details) 
     {'_cclass': appregs.appval, 'name': 'actual frequency', 'value': None},     # actual pwm frequency reported by pigpio
     {'_cclass': appregs.appval, 'name': 'hold power',       'value': .1},       # power reduction used when motor is stopped
     {'_cclass': appregs.appval, 'name': 'slow power',       'value': .6},       # power reduction used when motor is at slow speed
     {'_cclass': appregs.appval, 'name': 'slow limit',       'value': 20},       # rpm below which slow power factor used
     {'_cclass': appregs.appval, 'name': 'fast power',       'value': 1},        # power reduction used when speed above slow limit
+    
 )
 
 class SimpleUni(treedict.Tree_dict):
@@ -115,7 +116,11 @@ class SimpleUni(treedict.Tree_dict):
         stepfactor=StepTables[ticktable]['factor']
         thisentry=usetable[stepindex]
         self.uStepPosReg=self['driveregs/uStepPos']
+        stoptime=None
         while self.running:
+            if not stoptime is None and time.time() > stoptime:
+                for p in self.pins:
+                    self.pio.set_PWM_dutycycle(p,0)
             delay=nextsteptime-time.time()
             if delay > .25:
                 time.sleep(.25)
@@ -150,11 +155,13 @@ class SimpleUni(treedict.Tree_dict):
                         self.stepinterval=None
                         usetable = self._maketable(ticktable)
                         print('stopped')
+                        stoptime=time.time()+3
                     else:
                         tps=abs(params)*self['settings/uStepsPerRev'].getCurrent()/60   # calculate steps per second and convert to interval in seconds
                         self.stepinterval=1/tps
                         usetable = self._maketable(ticktable)
                         print('step interval now set to %2.5f' % self.stepinterval)
+                        stoptime=None
                 elif command=='setmicrostep' and params in StepTables and params != ticktable:
                     newstepfactor=StepTables[params]['factor']
                     if newstepfactor > stepfactor:
